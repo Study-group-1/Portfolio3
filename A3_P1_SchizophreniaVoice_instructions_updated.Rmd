@@ -107,17 +107,23 @@ Only then (when everything works) turn the code into a function and use map_df()
 See placeholder code here for help.
 
 ```{r}
-library(tidyverse)
+library(tidyverse, purrr)
 
 read_pitch <- function(filename) {
     # load data
-    
+    filename <- paste('Pitch/', filename, sep = "")
+    pitch <- read.csv(filename)
     # parse filename to extract study, diagnosis, subject and trial
-    
+    study <- filename %>% str_extract('Study\\d') %>% gsub('Study', '', .)
+    diagnoisis <- filename %>% str_extract('D\\d') %>% gsub('D', '', .)
+    subject <- filename %>% str_extract('S\\d') %>% gsub('S', '', .)
+    trial <- filename %>% str_extract('T\\d+') %>% gsub('T', '', .)
     # extract pitch descriptors (mean, sd, iqr, etc)
-    
+    mean <- mean(pitch$f0)
+    sd <- sd(pitch$f0)
+    iqr <- IQR(pitch$f0)
     # combine all this data in one dataset
-    return(data)
+    return(tibble(study, diagnoisis, subject, trial, mean, sd, iqr))
 }
 
 # test it on just one file while writing the function
