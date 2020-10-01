@@ -116,7 +116,7 @@ read_pitch <- function(filename) {
     # parse filename to extract study, diagnosis, subject and trial
     study <- filename %>% str_extract('Study\\d') %>% gsub('Study', '', .)
     diagnoisis <- filename %>% str_extract('D\\d') %>% gsub('D', '', .)
-    subject <- filename %>% str_extract('S\\d') %>% gsub('S', '', .)
+    subject <- filename %>% str_extract('S\\d+') %>% gsub('S', '', .)
     trial <- filename %>% str_extract('T\\d+') %>% gsub('T', '', .)
     # extract pitch descriptors (mean, sd, iqr, etc)
     mean <- mean(pitch$f0)
@@ -133,7 +133,7 @@ test_data = read_pitch("Study1D0S101T1_f0.txt")
 pitch_data = list.files(path = "Pitch/",pattern = ".txt") %>% ## NB replace with your path to the files
     purrr::map_df(read_pitch)
 
-write_csv(pitch_data, ...)
+write_csv(pitch_data, "pitch_data.csv")
 
 ```
 
@@ -142,7 +142,56 @@ write_csv(pitch_data, ...)
 
 ```{r}
 # Let's start with the demographic and clinical data
+demo <- read.csv('DemographicData.csv', sep = ';')
+# Let's start with the demographic and clinical data
+demo <- read.csv("DemographicData.csv", sep = ";", header = TRUE) %>% 
+    rename(diagnosis = Diagnosis, 
+           subject = Participant, 
+           study = Study) %>% 
+    mutate(diagnosis = recode(diagnosis, 
+                              "Control" = "0",
+                              "Schizophrenia" = "1"))
 
+# then duration data
+duration <- read.csv("Articulation.txt", sep = ",", header = TRUE)
+
+## make new columns by using the soundname-column to infer what subject, trial, diagnosis and study the data comes from
+#adding as integer to make sure the merging will regard all the participants numbers the same regardless of whether it is 001, 01 and 1
+duration$study <- duration$soundname %>% str_extract("Study\\d") %>% gsub("Study", "", .) %>% as.integer()
+duration$diagnosis <- duration$soundname %>% str_extract("D\\d") %>% gsub("D", "", .)
+duration$subject <- duration$soundname %>% str_extract("S\\d+") %>% gsub("S", "", .)
+duration$trial <- duration$soundname %>% str_extract("T\\d+") %>% gsub("T", "", .) %>% as.integer()
+
+duration$subject <- as.numeric(duration$subject)
+
+# Finally the pitch data
+pitch_data <- read_csv("pitch_data.csv")
+pitch_data$subject <- as.numeric(pitch_data$subject)
+
+# Now we merge them
+df_1 <- merge(demo, pitch_data)
+data <- merge(df_1, duration)
+
+# Now we save them
+write.csv(data, "Schizophrenia_data_merged.csv")
+# then duration data
+duration <- read.csv("Articulation.txt", sep = ",", header = TRUE)
+## make new columns by using the soundname-column to infer what subject, trial, diagnosis and study the data comes from
+#adding as integer to make sure the merging will regard all the participants numbers the same regardless of whether it is 001, 01 and 1
+duration$study <- duration$soundname %>% str_extract("Study\\d") %>% gsub("Study", "", .) %>% as.integer()
+duration$diagnosis <- duration$soundname %>% str_extract("D\\d") %>% gsub("D", "", .)
+duration$subject <- duration$soundname %>% str_extract("S\\d+") %>% gsub("S", "", .)
+duration$trial <- duration$soundname %>% str_extract("T\\d+") %>% gsub("T", "", .) %>% as.integer()
+duration$subject <- as.numeric(duration$subject)
+# Finally the pitch data
+pitch_data <- read_csv("pitch_data.csv")
+pitch_data$subject <- as.numeric(pitch_data$subject)
+# Now we merge them
+df_1 <- merge(demo, pitch_data)
+data <- merge(df_1, duration)
+# Now we save them
+write.csv(data, "Schizophrenia_data_merged.csv")
+```
 # then duration data
 
 # Finally the pitch data
