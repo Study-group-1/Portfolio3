@@ -171,6 +171,8 @@ pitch_data$subject <- as.numeric(pitch_data$subject)
 # Now we merge them
 df_1 <- merge(demo, pitch_data)
 data <- merge(df_1, duration)
+data <- data %>% filter(Language == 'Danish')
+
 
 # Now we save them
 write.csv(data, "Schizophrenia_data_merged.csv")
@@ -232,14 +234,8 @@ data %>%
 
 # Gustav
 str(data)
-data %>% 
-    split(list(data$study, data$diagnosis)) %>% 
+data %>% split(list(data$study, data$diagnosis)) %>% 
                    map(summary)
-
-#diagnosis schitzofrenia = 1, control = 0
-
-data %>% split(data$study) %>%
-  map(summary)
 
 ```
 
@@ -282,18 +278,32 @@ data <- data %>%
            iqr_scaled = scale(iqr),
            mean_scaled = scale(mean))
 
-levels(data$Language)
+
 data$study <- as.factor(data$study)
 levels(data$study)
 
-#add random effects? random slope for study or language? (safe to assume that different languages at least has different variations in pitch +++)
-m1 <- lmerTest::lmer(sd_scaled ~ diagnosis + Language + (1 |subject), data, REML = FALSE)
-m2 <- lmerTest::lmer(speechrate_scaled ~ diagnosis + Language + (1|subject), data, REML = FALSE)
-m3 <- lmerTest::lmer(pots_scaled ~ diagnosis + Language + (1|subject), data, REML = FALSE)
-m4 <- lmerTest::lmer(pause_dur_scaled ~ diagnosis + Language + (1|subject), data, REML = FALSE)
-
+#make models
+m1 <- lmerTest::lmer(sd_scaled ~ diagnosis + (1|subject),
+                     data, 
+                     REML = FALSE,
+                     control = lmerControl(optimizer = "nloptwrap", calc.derivs = FALSE))
+m3 <- lmerTest::lmer(pots_scaled ~ diagnosis + (1|subject),
+                     data,
+                     REML = FALSE,
+                     control = lmerControl(optimizer = "nloptwrap", calc.derivs = FALSE))
+m2 <- lmerTest::lmer(speechrate_scaled ~ diagnosis + (1|subject),
+                     data,
+                     REML = FALSE,
+                     control = lmerControl(optimizer = "nloptwrap", calc.derivs = FALSE))
+m4 <- lmerTest::lmer(pause_dur_scaled ~ diagnosis + (1|subject),
+                     data,
+                     REML = FALSE,
+                     control = lmerControl(optimizer = "nloptwrap", calc.derivs = FALSE))
 
 summary(m1)
+summary(m2)
+summary(m3)
+summary(m4)
 ```
 
 
@@ -306,68 +316,6 @@ N.N.N.B. If you want to estimate the studies separately, you can try this syntax
 
 - Bonus points: cross-validate the models and report the betas and standard errors from all rounds to get an idea of how robust the estimates are. 
 
-```{r}
-k <- 6
-folds <- createFolds(unique(data$subject), k = k, list = TRUE, returnTrain = FALSE)
-
-trainRMSE <- rep(NA, k)
-testRMSE <- rep(NA, k)
-
-i = 1
-for (fold in folds){
-  train = subset(data, !(subject %in% fold))
-  test = subset(data, subject %in% fold)
-  model = lmer(sd_scaled ~ diagnosis + Language + (1 |subject), train)
-  test$prediction = predict(model, test, allow.new.levels = TRUE)
-  train$prediction = fitted(model)
-  trainRMSE[i] = rmse(train$sd_scaled, fitted(model))
-  testRMSE[i] = rmse(test$sd_scaled, test$prediction)
-  i = i + 1
-}
-
-trainRMSE
-testRMSE
-
-RMSE <- data.frame(trainRMSE, testRMSE)
-
-
-#FUNCTION 
-cross_validate <- function(x, y) {
-  k <- 6
-  folds <- createFolds(unique(data$subject), k = k, list = T, returnTrain = F)
-  trainRMSE <- rep(NA, k)
-  testRMSE <- rep(NA, k)
-  i = 1
-  for (fold in folds) {
-    train = subset(data, !(subject %in% fold))
-    test = subset(data, subject %in% fold)
-    model = lmer(x, train)
-    test$prediction = predict(model, test, allow.new.levels = T)
-    train$prediction = fitted(model)
-    trainRMSE[i] = rmse(train$sd_scaled, fitted(model))
-    testRMSE[i] = rmse(test$sd_scaled, test$prediction)
-    i = i + 1
-  }
-  rm <- data.frame("model" = y, "train" = trainRMSE, "test" = testRMSE, "meantrain" = rep(mean(trainRMSE), 6), "meantest" = rep(mean(testRMSE), 6), "meandiff" = rep((mean(testRMSE) - mean(trainRMSE)), 6), "sdtrain" = rep(sd(trainRMSE), 6), "sdtest" = rep(sd(testRMSE), 6))
-  return(rm)
-}
-
-
-
-```
-
-
-
-
-```{r}
-   set.seed(1)
-   x <- runif(7)
-
-   # Manually scaling
-   (x - mean(x)) / sd(x)
-
-   scale(x)
-```
 
 ## N.B. Remember to save the acoustic features of voice in a separate file, so to be able to load them next time
 
