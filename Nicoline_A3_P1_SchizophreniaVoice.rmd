@@ -175,7 +175,7 @@ data <- data %>% filter(Language == 'Danish')
 
 
 # Now we save them
-write.csv(data, "Schizophrenia_data_merged.csv")
+write.csv(data, "Scizophrenia_data_merged.csv")
 ```
 
 ## Now we need to describe our sample
@@ -281,6 +281,9 @@ data <- data %>%
 
 data$study <- as.factor(data$study)
 levels(data$study)
+
+write.csv(data, 'merged.csv')
+data <- read.csv('merged.csv')
 
 #make models
 m1 <- lmerTest::lmer(sd_scaled ~ diagnosis + (1|subject),
